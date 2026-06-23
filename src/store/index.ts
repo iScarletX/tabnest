@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { TabNestState, Tab, Group, AlertMode } from './types'
+import type { TabNestState, Tab, Group } from './types'
 import { initialState } from './defaults'
 import { loadState, saveState, onStateChange } from './storage'
 
@@ -14,9 +14,7 @@ type Action =
   | { type: 'restoreTab'; tabId: string; toGroupId: string }
   | { type: 'addTab'; tab: Tab; groupId: string | 'inbox' }
   | { type: 'upsertTabs'; tabs: Tab[]; groupId: string | 'inbox' }
-  | { type: 'setMode'; mode: AlertMode }
   | { type: 'setPref'; patch: Partial<TabNestState['preferences']> }
-  | { type: 'toggleBlacklist'; domain: string }
   | { type: 'aiAutoClassify' }
   | { type: 'replaceState'; state: TabNestState }
 
@@ -155,22 +153,9 @@ export function dispatch(action: Action) {
       state = { ...state }
       break
     }
-    case 'setMode':
-      state = { ...state, preferences: { ...state.preferences, mode: action.mode } }
-      break
     case 'setPref':
       state = { ...state, preferences: { ...state.preferences, ...action.patch } }
       break
-    case 'toggleBlacklist': {
-      const exists = state.blacklist.includes(action.domain)
-      state = {
-        ...state,
-        blacklist: exists
-          ? state.blacklist.filter((d) => d !== action.domain)
-          : [...state.blacklist, action.domain],
-      }
-      break
-    }
     case 'aiAutoClassify': {
       // 本地规则版（v1）。v2 接真 LLM 时替换这里。
       // 策略：不创建新分组。只能匹配到现有分组才归类，否则留在收件箱。

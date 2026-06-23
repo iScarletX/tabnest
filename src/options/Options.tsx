@@ -180,7 +180,7 @@ export function Options() {
           <InboxPanel />
 
           <footer className="text-center text-[11px] text-ink-muted py-6">
-            🪺 TabNest v0.1.2 · 让标签有处可栖 · 开源 MIT
+            🪺 TabNest v0.1.4 · 让标签有处可栖 · 开源 MIT
           </footer>
         </main>
 

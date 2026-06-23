@@ -1,5 +1,3 @@
-export type AlertMode = 'A' | 'B' | 'C' | 'D'
-
 export interface Tab {
   id: string
   url: string
@@ -30,13 +28,9 @@ export interface WhitelistRule {
 }
 
 export interface Preferences {
-  mode: AlertMode
-  archiveThresholdMinutes: number
-  inboxAlertThreshold: number
   aiProvider: 'openai' | 'claude' | 'gemini'
   aiApiKey: string
   aiModel: string
-  autoArchiveEnabled: boolean
   showFavicon: boolean
   showOpenTabsInInbox: boolean
 }

@@ -1,7 +1,7 @@
 {
   "name": "tabnest-extension",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.4",
   "type": "module",
   "description": "让标签有处可栖 · 开源浏览器标签整理工具",
   "scripts": {

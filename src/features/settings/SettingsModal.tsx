@@ -1,14 +1,6 @@
 import { X } from 'lucide-react'
 import { dispatch, useStore } from '../../store'
-import type { AlertMode } from '../../store/types'
 import clsx from 'clsx'
-
-const modes: { id: AlertMode; title: string; desc: string; icon: string; color: string }[] = [
-  { id: 'A', icon: '🤫', title: '完全手动', desc: '扩展静默，主动点开整理', color: '#5b9cd6' },
-  { id: 'B', icon: '🔔', title: '轻提醒', desc: '攒到阈值时温柔提醒一次', color: '#e3b341' },
-  { id: 'C', icon: '✨', title: 'AI 自动归档', desc: '关闭标签时自动归类，1.5s 内可撤销', color: '#9b85ff' },
-  { id: 'D', icon: '🎯', title: '实时归位', desc: '每开一个新标签都建议归类', color: '#4cc38a' },
-]
 
 interface Props {
   open: boolean
@@ -18,7 +10,6 @@ interface Props {
 export function SettingsModal({ open, onClose }: Props) {
   const state = useStore()
   const prefs = state.preferences
-  const blacklist = state.blacklist
 
   if (!open) return null
 
@@ -39,35 +30,7 @@ export function SettingsModal({ open, onClose }: Props) {
         </div>
 
         <div className="p-6 space-y-8">
-          <section>
-            <h3 className="text-sm font-semibold mb-3 tracking-tight">打扰模式</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {modes.map((m) => (
-                <button
-                  key={m.id}
-                  className={clsx(
-                    'text-left p-3.5 rounded-xl border transition-all',
-                    prefs.mode === m.id
-                      ? 'border-brand bg-brand-tintHi shadow-glow'
-                      : 'border-line/60 bg-bg-soft hover:border-line-strong hover:bg-bg-hover',
-                  )}
-                  onClick={() => dispatch({ type: 'setMode', mode: m.id })}
-                >
-                  <div className="flex items-center gap-2.5 mb-1.5">
-                    <span
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-lg"
-                      style={{ background: `${m.color}20`, border: `1px solid ${m.color}40` }}
-                    >
-                      {m.icon}
-                    </span>
-                    <span className="font-medium text-sm">{m.title}</span>
-                  </div>
-                  <p className="text-xs text-ink-muted leading-relaxed">{m.desc}</p>
-                </button>
-              ))}
-            </div>
-          </section>
-
+          {/* 界面偏好 */}
           <section>
             <h3 className="text-sm font-semibold mb-3 tracking-tight">界面偏好</h3>
             <div className="space-y-3">
@@ -78,57 +41,23 @@ export function SettingsModal({ open, onClose }: Props) {
                 onChange={(v) => dispatch({ type: 'setPref', patch: { showFavicon: v } })}
               />
               <Toggle
-                label="收件箱里显示打开中的标签"
-                hint="浏览器里未归类的标签也会出现在收件箱，带绿色点标识"
+                label="显示打开中的标签"
+                hint="浏览器里未归类的标签会出现在'待分类'面板"
                 checked={prefs.showOpenTabsInInbox}
                 onChange={(v) => dispatch({ type: 'setPref', patch: { showOpenTabsInInbox: v } })}
               />
             </div>
           </section>
 
-          <section>
-            <h3 className="text-sm font-semibold mb-3 tracking-tight">归档判定</h3>
-            <div className="space-y-3">
-              <Row label="存在时长阈值" hint="超过此时长才进入归档队列">
-                <input
-                  type="number"
-                  min={1}
-                  max={60}
-                  value={prefs.archiveThresholdMinutes}
-                  onChange={(e) =>
-                    dispatch({
-                      type: 'setPref',
-                      patch: { archiveThresholdMinutes: Math.max(1, +e.target.value) },
-                    })
-                  }
-                  className="input w-16 text-center"
-                />
-                <span className="text-sm text-ink-muted">分钟</span>
-              </Row>
-              <Row label="收件箱提醒阈值" hint="攒满后提醒整理（模式 B）">
-                <input
-                  type="number"
-                  min={5}
-                  max={100}
-                  value={prefs.inboxAlertThreshold}
-                  onChange={(e) =>
-                    dispatch({
-                      type: 'setPref',
-                      patch: { inboxAlertThreshold: Math.max(5, +e.target.value) },
-                    })
-                  }
-                  className="input w-16 text-center"
-                />
-              </Row>
-            </div>
-          </section>
-
+          {/* AI 服务 */}
           <section>
             <h3 className="text-sm font-semibold mb-3 tracking-tight">
               AI 服务
               <span className="ml-2 chip-brand">BYOK</span>
             </h3>
-            <p className="text-xs text-ink-muted mb-3">仅本地保存，永不上传</p>
+            <p className="text-xs text-ink-muted mb-3">
+              你的 API Key 仅保存在浏览器本地，永不上传 · v0.2 起将启用真实 LLM 分类
+            </p>
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
                 {(['openai', 'claude', 'gemini'] as const).map((p) => (
@@ -162,51 +91,11 @@ export function SettingsModal({ open, onClose }: Props) {
             </div>
           </section>
 
-          <section>
-            <h3 className="text-sm font-semibold mb-3 tracking-tight">黑名单</h3>
-            <p className="text-xs text-ink-muted mb-3">
-              这些域名永远不会被归档（搜索结果页、地图、天气等）
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {blacklist.map((d) => (
-                <button
-                  key={d}
-                  className="chip hover:bg-danger/15 hover:border-danger/40 hover:text-danger group transition-all"
-                  onClick={() => dispatch({ type: 'toggleBlacklist', domain: d })}
-                >
-                  {d}
-                  <X size={10} className="opacity-0 group-hover:opacity-100" />
-                </button>
-              ))}
-              <button
-                className="chip border-dashed hover:bg-bg-hover hover:border-brand/40"
-                onClick={() => {
-                  const d = prompt('添加黑名单域名（不含 http:// 前缀）：')
-                  if (d) dispatch({ type: 'toggleBlacklist', domain: d.trim() })
-                }}
-              >
-                + 添加
-              </button>
-            </div>
-          </section>
-
           <section className="text-center text-[11px] text-ink-muted pt-4 border-t border-line/40">
-            TabNest 🪺 v0.1.0 · MIT License · 数据 100% 本地存储
+            TabNest 🪺 v0.1.4 · MIT License · 数据 100% 本地存储
           </section>
         </div>
       </div>
-    </div>
-  )
-}
-
-function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex-1">
-        <div className="text-sm">{label}</div>
-        {hint && <div className="text-[11px] text-ink-muted mt-0.5">{hint}</div>}
-      </div>
-      <div className="flex items-center gap-2">{children}</div>
     </div>
   )
 }

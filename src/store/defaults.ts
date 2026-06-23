@@ -28,13 +28,9 @@ export const initialState: TabNestState = {
   blacklist: DEFAULT_BLACKLIST,
   whitelist: [],
   preferences: {
-    mode: 'B',
-    archiveThresholdMinutes: 3,
-    inboxAlertThreshold: 20,
     aiProvider: 'openai',
     aiApiKey: '',
     aiModel: 'gpt-4o-mini',
-    autoArchiveEnabled: true,
     showFavicon: true,
     showOpenTabsInInbox: true,
   },
