@@ -85,6 +85,7 @@ export function mapToChromeColor(hex: string): chrome.tabGroups.ColorEnum {
 
 /**
  * 一键应用方案：把分组里的标签拉起来 + 写入 Chrome Tab Groups + 折叠
+ * 会复用现有同名 Tab Group，避免重复创建
  */
 export async function applyPlanToBrowser(
   groups: Group[],
@@ -93,8 +94,14 @@ export async function applyPlanToBrowser(
   let appliedGroups = 0
   let openedTabs = 0
 
+  // 先查出当前所有已存在的 Tab Groups（只在当前窗口）
+  const currentWindow = await chrome.windows.getCurrent()
+  const existingGroups = await chrome.tabGroups.query({ windowId: currentWindow.id })
+
   for (const group of groups) {
     if (group.tabIds.length === 0) continue
+
+    const groupTitle = `${group.icon} ${group.name}`
 
     // 1. 为分组的每个标签确保有一个浏览器 tab
     const tabIds: number[] = []
@@ -112,7 +119,6 @@ export async function applyPlanToBrowser(
         chromeTab = found[0] ?? null
       }
       if (!chromeTab) {
-        // 新建一个非激活的标签
         chromeTab = await chrome.tabs.create({ url: meta.url, active: false })
         openedTabs++
       }
@@ -121,14 +127,35 @@ export async function applyPlanToBrowser(
 
     if (tabIds.length === 0) continue
 
-    // 2. 写入 Chrome Tab Group
-    const groupId = await chrome.tabs.group({ tabIds })
+    // 2. 查找同名的现有 Chrome Tab Group、或者数据库中记录的 chromeGroupId
+    let existingGroupId: number | null = null
+    if (group.chromeGroupId != null) {
+      const found = existingGroups.find((g) => g.id === group.chromeGroupId)
+      if (found) existingGroupId = found.id
+    }
+    if (existingGroupId == null) {
+      const sameTitle = existingGroups.find((g) => g.title === groupTitle)
+      if (sameTitle) existingGroupId = sameTitle.id
+    }
+
+    // 3. 写入或复用 Tab Group
+    let groupId: number
+    if (existingGroupId != null) {
+      // 复用已有 Group：把新 tab 加进去
+      groupId = await chrome.tabs.group({ groupId: existingGroupId, tabIds })
+    } else {
+      // 新建 Group
+      groupId = await chrome.tabs.group({ tabIds })
+    }
     await chrome.tabGroups.update(groupId, {
-      title: `${group.icon} ${group.name}`,
+      title: groupTitle,
       color: mapToChromeColor(group.color),
-      collapsed: true, // 折叠 = 不渲染 = 释放内存的关键
+      collapsed: true,
     })
     appliedGroups++
+
+    // 记录下 chromeGroupId 供下次复用
+    group.chromeGroupId = groupId
   }
 
   return { appliedGroups, openedTabs }

@@ -7,16 +7,16 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import { Plus, FolderPlus, Zap } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Header } from '../shared/Header'
 import { ToastContainer, showToast } from '../shared/Toast'
-import { ModeIndicator } from '../shared/ModeIndicator'
 import { GroupCard } from '../features/groups/GroupCard'
+import { PendingPanel } from '../features/inbox/PendingPanel'
 import { InboxPanel } from '../features/inbox/InboxPanel'
 import { SettingsModal } from '../features/settings/SettingsModal'
 import { MemoryStats } from '../features/stats/MemoryStats'
 import { dispatch, useStore, getState, ensureLoaded } from '../store'
-import { applyPlanToBrowser, chromeTabToTab } from '../lib/chrome-api'
+import { applyPlanToBrowser } from '../lib/chrome-api'
 
 const PRESET_GROUPS = [
   { icon: '💼', name: '工作', color: '#5b71e3' },
@@ -77,30 +77,19 @@ export function Options() {
     }
   }
 
-  const handleImportCurrent = async () => {
-    const tabs = await chrome.tabs.query({ currentWindow: true })
-    const valid = tabs
-      .filter((t) => t.url && !t.url.startsWith('chrome://') && !t.url.startsWith('chrome-extension://'))
-      .map((t) => chromeTabToTab(t))
-    const existing = new Set(Object.values(state.tabs).map((x) => x.url))
-    const fresh = valid.filter((t) => !existing.has(t.url))
-    if (fresh.length === 0) {
-      showToast({ title: '没有新标签', desc: '当前窗口的标签都已经在 TabNest 里了' })
-      return
-    }
-    dispatch({ type: 'upsertTabs', tabs: fresh, groupId: 'inbox' })
-    showToast({ title: `📥 导入了 ${fresh.length} 个标签`, desc: '请去收件箱查看并整理' })
-  }
-
   return (
     <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
       <div className="min-h-screen flex flex-col">
         <Header onOpenSettings={() => setSettingsOpen(true)} />
 
         <main className="flex-1 w-full max-w-6xl mx-auto px-6 py-6 space-y-5">
+          {/* ① 内存总览 + 一键应用 */}
           <MemoryStats onApply={handleApplyPlan} />
 
-          {/* 分组区 */}
+          {/* ② 待分类（最上方，浏览器里打开但还没归类的）*/}
+          <PendingPanel />
+
+          {/* ③ 我的分组（核心区域）*/}
           <section>
             <div className="flex items-center justify-between mb-3 px-1">
               <div className="flex items-baseline gap-2">
@@ -146,44 +135,11 @@ export function Options() {
             </div>
           </section>
 
-          <section>
-            <InboxPanel />
-          </section>
-
-          <section className="grid md:grid-cols-3 gap-3 pt-2">
-            <ModeIndicator onOpenSettings={() => setSettingsOpen(true)} />
-
-            <button
-              className="card p-3.5 flex items-center gap-3 hover:border-brand/40 transition-all group"
-              onClick={handleImportCurrent}
-            >
-              <span className="w-9 h-9 rounded-xl bg-brand-tint border border-brand/30 flex items-center justify-center text-brand-glow shrink-0">
-                <FolderPlus size={16} />
-              </span>
-              <div className="text-left flex-1">
-                <div className="text-[10.5px] text-ink-muted">从浏览器</div>
-                <div className="text-sm font-medium">导入当前窗口标签</div>
-              </div>
-              <span className="text-xs text-ink-muted opacity-0 group-hover:opacity-100">→</span>
-            </button>
-
-            <button
-              className="card p-3.5 flex items-center gap-3 hover:border-warn/40 transition-all group"
-              onClick={() => showToast({ title: '🚧 即将上线', desc: 'AI 真实分组功能即将上线' })}
-            >
-              <span className="w-9 h-9 rounded-xl bg-warn/15 border border-warn/30 flex items-center justify-center text-warn shrink-0">
-                <Zap size={16} />
-              </span>
-              <div className="text-left flex-1">
-                <div className="text-[10.5px] text-ink-muted">即将上线</div>
-                <div className="text-sm font-medium">真实 AI 智能分组</div>
-              </div>
-              <span className="text-xs text-ink-muted opacity-0 group-hover:opacity-100">v0.2</span>
-            </button>
-          </section>
+          {/* ④ 待手动整理（AI 兜底，永远显示）*/}
+          <InboxPanel />
 
           <footer className="text-center text-[11px] text-ink-muted py-6">
-            🪺 TabNest v0.1.0 · 让标签有处可栖 · 开源 MIT
+            🪺 TabNest v0.1.2 · 让标签有处可栖 · 开源 MIT
           </footer>
         </main>
 

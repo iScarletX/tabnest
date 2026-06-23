@@ -1,6 +1,5 @@
-import { useStore, activeTabIds, dispatch, getState } from '../store'
-import { Settings, Search, Sparkles } from 'lucide-react'
-import { showToast } from './Toast'
+import { useStore, activeTabIds } from '../store'
+import { Settings, Search } from 'lucide-react'
 
 interface Props {
   onOpenSettings: () => void
@@ -38,35 +37,6 @@ export function Header({ onOpenSettings }: Props) {
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
             <input placeholder="搜索标签…" className="input pl-9 pr-3 py-2 w-56 focus:w-72" />
           </div>
-
-          <button
-            className="btn-primary"
-            onClick={() => {
-              const before = getState().inbox.length
-              if (before === 0) {
-                showToast({ title: '🎉 收件箱已空', desc: '没有需要分类的标签' })
-                return
-              }
-              const beforeGroups = getState().groups.length
-              dispatch({ type: 'aiAutoClassify' })
-              const after = getState().inbox.length
-              const afterGroups = getState().groups.length
-              const classified = before - after
-              const created = afterGroups - beforeGroups
-              showToast({
-                title: classified > 0
-                  ? `✨ 分类了 ${classified} 个标签`
-                  : '🤔 没有标签被分类',
-                desc: classified > 0
-                  ? `${created > 0 ? `新建 ${created} 个分组・` : ''}${after} 个标签 AI 不确定，请手动处理`
-                  : '需要你手动拖到分组里',
-              })
-            }}
-            title="让 AI 自动归类收件箱里的标签"
-          >
-            <Sparkles size={14} />
-            AI 一键分类
-          </button>
 
           <button className="btn-icon" onClick={onOpenSettings} title="设置">
             <Settings size={16} />

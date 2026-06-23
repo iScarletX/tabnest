@@ -134,58 +134,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.favIconUrl) meta.favicon = changeInfo.favIconUrl
 })
 
-chrome.tabs.onRemoved.addListener(async (tabId) => {
-  const meta = liveTabs.get(tabId)
+chrome.tabs.onRemoved.addListener((tabId) => {
+  // v0.1.2 起：不再自动归档关闭的标签（避免与浏览器历史记录重复）
+  // 用户只能通过【右键菜单】或【PendingPanel 中主动处理】的方式入库
   liveTabs.delete(tabId)
-  if (!meta) return
-
-  await ensureLoaded()
-  const state = getState()
-
-  if (!shouldArchive(meta, state.blacklist, state.preferences.archiveThresholdMinutes)) {
-    return
-  }
-  if (!state.preferences.autoArchiveEnabled) return
-
-  // 收纳到收件箱
-  const newTab: Tab = {
-    id: `tab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    url: meta.url,
-    title: meta.title || domainOf(meta.url),
-    favicon: meta.favicon || faviconOf(meta.url),
-    domain: domainOf(meta.url),
-    archivedAt: Date.now(),
-    source: 'auto',
-  }
-  dispatch({ type: 'addTab', tab: newTab, groupId: 'inbox' })
-  showBadge(getState().inbox.length)
-}
-)
-
-// ============================================================
-//  归档判定逻辑
-// ============================================================
-
-function shouldArchive(meta: TabMeta, blacklist: string[], minMinutes: number): boolean {
-  if (!meta.url) return false
-  if (meta.url.startsWith('chrome://') || meta.url.startsWith('chrome-extension://')) return false
-  if (meta.url.startsWith('about:')) return false
-
-  const ageMin = (Date.now() - meta.bornAt) / 60000
-  if (ageMin < minMinutes) return false
-
-  // 黑名单匹配
-  for (const pattern of blacklist) {
-    if (matchPattern(meta.url, pattern) || meta.url.includes(pattern)) return false
-  }
-
-  return true
-}
-
-function matchPattern(url: string, pattern: string): boolean {
-  // 简单 contains，足够覆盖 v1 需求
-  return url.includes(pattern)
-}
+})
 
 // ============================================================
 //  Badge 更新
