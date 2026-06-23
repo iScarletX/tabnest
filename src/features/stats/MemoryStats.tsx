@@ -71,10 +71,10 @@ export function MemoryStats({ onApply }: Props) {
         <div className="text-right">
           <button className="btn-primary w-full py-2.5 text-sm" onClick={handleApply} disabled={applying}>
             {applying ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-            {applying ? '正在应用…' : '一键应用方案'}
+            {applying ? '正在整理…' : '一键智能整理'}
           </button>
           <div className="text-[10.5px] text-ink-muted mt-2 leading-relaxed">
-            写入浏览器 Tab Groups 并折叠<br />Chrome 会自动卸载闲置标签
+            AI 分类待处理标签 + 写入浏览器 Tab Group<br />Chrome 会自动卸载闲置标签
           </div>
         </div>
       </div>

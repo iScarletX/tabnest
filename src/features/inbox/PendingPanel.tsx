@@ -3,18 +3,18 @@
  * 实时反映浏览器中的标签状态，是用户主动整理的入口
  */
 import { useEffect, useMemo, useState } from 'react'
-import { Sparkles, X, Inbox } from 'lucide-react'
-import { useStore, dispatch, getState } from '../../store'
+import { X, Inbox } from 'lucide-react'
+import { useStore, dispatch } from '../../store'
 import { chromeTabToTab } from '../../lib/chrome-api'
 import type { Tab } from '../../store/types'
-import { showToast } from '../../shared/Toast'
 
-function buildLiveTabs(chromeTabs: chrome.tabs.Tab[], existingUrls: Set<string>): Tab[] {
+function buildLiveTabs(chromeTabs: chrome.tabs.Tab[], groupedUrls: Set<string>): Tab[] {
+  // 只过滤掉已在分组里的 URL，待手动整理里的同 URL 重新打开后也会重现在待分类
   return chromeTabs
     .filter((t) => {
       if (!t.url) return false
       if (t.url.startsWith('chrome://') || t.url.startsWith('chrome-extension://') || t.url.startsWith('about:')) return false
-      if (existingUrls.has(t.url)) return false
+      if (groupedUrls.has(t.url)) return false
       return true
     })
     .map((t) => {
@@ -27,10 +27,17 @@ export function PendingPanel() {
   const state = useStore()
   const groups = state.groups
 
-  const existingUrls = useMemo(
-    () => new Set(Object.values(state.tabs).map((t) => t.url)),
-    [state.tabs],
-  )
+  // 只取【分组内】的 URL。待手动整理里的 URL 不去重，这样关掉后重开仍会出现在待分类
+  const groupedUrls = useMemo(() => {
+    const set = new Set<string>()
+    for (const g of state.groups) {
+      for (const tid of g.tabIds) {
+        const t = state.tabs[tid]
+        if (t) set.add(t.url)
+      }
+    }
+    return set
+  }, [state.groups, state.tabs])
 
   const [liveTabs, setLiveTabs] = useState<Tab[]>([])
 
@@ -41,7 +48,7 @@ export function PendingPanel() {
         if (!chrome?.tabs?.query) return
         const tabs = await chrome.tabs.query({ currentWindow: true })
         if (cancelled) return
-        setLiveTabs(buildLiveTabs(tabs, existingUrls))
+        setLiveTabs(buildLiveTabs(tabs, groupedUrls))
       } catch {}
     }
     refresh()
@@ -57,31 +64,7 @@ export function PendingPanel() {
         if (chrome?.tabs?.onUpdated) chrome.tabs.onUpdated.removeListener(handler)
       } catch {}
     }
-  }, [existingUrls])
-
-  const handleClassifyAll = () => {
-    if (liveTabs.length === 0) return
-    // 1. 把所有 live tabs 转成真实的 tab 入库到 inbox
-    const realTabs: Tab[] = liveTabs.map((lt) => ({
-      ...lt,
-      id: `tab-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    }))
-    dispatch({ type: 'upsertTabs', tabs: realTabs, groupId: 'inbox' })
-
-    const beforeInbox = getState().inbox.length
-    // 2. AI 分类
-    dispatch({ type: 'aiAutoClassify' })
-    const afterInbox = getState().inbox.length
-    const classified = beforeInbox - afterInbox
-
-    showToast({
-      title: classified > 0 ? `✨ 分类了 ${classified} 个标签` : '🤔 没有标签被识别',
-      desc:
-        afterInbox > 0
-          ? `${afterInbox} 个 AI 不确定，已放到下方"待手动整理"`
-          : '全部归位完成',
-    })
-  }
+  }, [groupedUrls])
 
   const moveSingle = (tab: Tab, groupId: string) => {
     // 把这个 live tab 入库并直接放到对应分组
@@ -107,11 +90,6 @@ export function PendingPanel() {
           </div>
           {liveTabs.length > 0 && <span className="chip-brand ml-1">{liveTabs.length}</span>}
         </div>
-        {liveTabs.length > 0 && (
-          <button className="btn-primary text-xs py-1.5" onClick={handleClassifyAll}>
-            <Sparkles size={12} /> AI 一键分类
-          </button>
-        )}
       </div>
 
       <div className="p-3 space-y-1.5 max-h-[40vh] overflow-y-auto">
