@@ -1,5 +1,11 @@
 import { useMemo, useState } from 'react'
-import { MoreVertical, Trash2, Pencil, Plus, ChevronDown, ChevronRight } from 'lucide-react'
+import { MoreVertical, Trash2, Pencil, Plus, ChevronDown, ChevronRight, Palette } from 'lucide-react'
+
+const PALETTE = [
+  '#5b71e3', '#4cc38a', '#e3b341', '#ed6a5e',
+  '#9b85ff', '#5b9cd6', '#d97757', '#a878e8',
+  '#7c5cff', '#48bf91', '#d4924a', '#c87878',
+]
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { dispatch, useStore } from '../../store'
@@ -18,6 +24,7 @@ export function GroupCard({ group }: Props) {
   )
   const [menuOpen, setMenuOpen] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [colorPickerOpen, setColorPickerOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [name, setName] = useState(group.name)
 
@@ -31,8 +38,37 @@ export function GroupCard({ group }: Props) {
         isOver ? 'border-brand/70 ring-4 ring-brand/15' : ''
       }`}
     >
-      {/* 顶部彩色装饰条 */}
-      <div className="h-1" style={{ background: `linear-gradient(90deg, ${group.color}, ${group.color}80)` }} />
+      {/* 顶部彩色装饰条（点击可换色） */}
+      <button
+        className="h-1 w-full hover:h-1.5 transition-all relative group/color"
+        style={{ background: `linear-gradient(90deg, ${group.color}, ${group.color}80)` }}
+        onClick={() => setColorPickerOpen((v) => !v)}
+        title="点击换颜色"
+      >
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/color:opacity-100 transition-opacity">
+          <Palette size={10} />
+        </span>
+      </button>
+      {colorPickerOpen && (
+        <div className="px-4 py-2 flex items-center gap-1.5 flex-wrap bg-bg-hover/50 border-b border-line/40">
+          <span className="text-[10px] text-ink-muted mr-1">选颜色：</span>
+          {PALETTE.map((c) => (
+            <button
+              key={c}
+              className={`w-5 h-5 rounded-full transition-transform hover:scale-125 ${group.color === c ? 'ring-2 ring-white ring-offset-2 ring-offset-bg-card' : ''}`}
+              style={{ background: c }}
+              onClick={() => {
+                dispatch({ type: 'recolorGroup', id: group.id, color: c })
+                setColorPickerOpen(false)
+              }}
+            />
+          ))}
+          <button
+            className="text-[10px] ml-auto text-ink-muted hover:text-ink"
+            onClick={() => setColorPickerOpen(false)}
+          >关闭</button>
+        </div>
+      )}
 
       <div className="flex items-center gap-2.5 px-4 py-3">
         <button

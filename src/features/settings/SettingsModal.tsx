@@ -4,10 +4,10 @@ import type { AlertMode } from '../../store/types'
 import clsx from 'clsx'
 
 const modes: { id: AlertMode; title: string; desc: string; icon: string; color: string }[] = [
-  { id: 'A', icon: '🤫', title: '完全手动', desc: '扩展静默，主动点开整理', color: '#60a5fa' },
-  { id: 'B', icon: '🔔', title: '轻提醒', desc: '攒到阈值时温柔提醒一次', color: '#fbbf24' },
-  { id: 'C', icon: '✨', title: 'AI 自动归档', desc: '关闭标签时自动归类，1.5s 内可撤销', color: '#a78bfa' },
-  { id: 'D', icon: '🎯', title: '实时归位', desc: '每开一个新标签都建议归类', color: '#34d399' },
+  { id: 'A', icon: '🤫', title: '完全手动', desc: '扩展静默，主动点开整理', color: '#5b9cd6' },
+  { id: 'B', icon: '🔔', title: '轻提醒', desc: '攒到阈值时温柔提醒一次', color: '#e3b341' },
+  { id: 'C', icon: '✨', title: 'AI 自动归档', desc: '关闭标签时自动归类，1.5s 内可撤销', color: '#9b85ff' },
+  { id: 'D', icon: '🎯', title: '实时归位', desc: '每开一个新标签都建议归类', color: '#4cc38a' },
 ]
 
 interface Props {
@@ -65,6 +65,24 @@ export function SettingsModal({ open, onClose }: Props) {
                   <p className="text-xs text-ink-muted leading-relaxed">{m.desc}</p>
                 </button>
               ))}
+            </div>
+          </section>
+
+          <section>
+            <h3 className="text-sm font-semibold mb-3 tracking-tight">界面偏好</h3>
+            <div className="space-y-3">
+              <Toggle
+                label="显示网站图标 (favicon)"
+                hint="关闭后所有标签统一显示为灯色图标"
+                checked={prefs.showFavicon}
+                onChange={(v) => dispatch({ type: 'setPref', patch: { showFavicon: v } })}
+              />
+              <Toggle
+                label="收件箱里显示打开中的标签"
+                hint="浏览器里未归类的标签也会出现在收件箱，带绿色点标识"
+                checked={prefs.showOpenTabsInInbox}
+                onChange={(v) => dispatch({ type: 'setPref', patch: { showOpenTabsInInbox: v } })}
+              />
             </div>
           </section>
 
@@ -189,6 +207,31 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
         {hint && <div className="text-[11px] text-ink-muted mt-0.5">{hint}</div>}
       </div>
       <div className="flex items-center gap-2">{children}</div>
+    </div>
+  )
+}
+
+function Toggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex-1">
+        <div className="text-sm">{label}</div>
+        {hint && <div className="text-[11px] text-ink-muted mt-0.5">{hint}</div>}
+      </div>
+      <button
+        onClick={() => onChange(!checked)}
+        className={clsx(
+          'relative w-10 h-6 rounded-full transition-colors',
+          checked ? 'bg-brand-gradient' : 'bg-bg-soft border border-line/60',
+        )}
+      >
+        <span
+          className={clsx(
+            'absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform',
+            checked && 'translate-x-4',
+          )}
+        />
+      </button>
     </div>
   )
 }

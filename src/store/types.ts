@@ -37,6 +37,8 @@ export interface Preferences {
   aiApiKey: string
   aiModel: string
   autoArchiveEnabled: boolean
+  showFavicon: boolean
+  showOpenTabsInInbox: boolean
 }
 
 export interface TabNestState {

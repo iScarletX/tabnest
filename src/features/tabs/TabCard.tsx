@@ -1,7 +1,7 @@
-import { X, ExternalLink, GripVertical } from 'lucide-react'
+import { X, ExternalLink, GripVertical, Globe } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { dispatch } from '../../store'
+import { dispatch, useStore } from '../../store'
 import { focusOrOpen } from '../../lib/chrome-api'
 import type { Tab } from '../../store/types'
 import clsx from 'clsx'
@@ -68,14 +68,7 @@ export function TabCard({ tab, showConfidence }: Props) {
         <GripVertical size={14} />
       </div>
 
-      <img
-        src={tab.favicon}
-        alt=""
-        className="w-4 h-4 rounded shrink-0"
-        onError={(e) => {
-          ;(e.target as HTMLImageElement).style.visibility = 'hidden'
-        }}
-      />
+      <Favicon tab={tab} />
 
       <div className="flex-1 min-w-0">
         <div className="text-[13px] text-ink truncate leading-tight">{tab.title}</div>
@@ -117,5 +110,26 @@ export function TabCard({ tab, showConfidence }: Props) {
         </button>
       </div>
     </div>
+  )
+}
+
+function Favicon({ tab }: { tab: Tab }) {
+  const show = useStore().preferences.showFavicon
+  if (!show) {
+    return (
+      <span className="w-4 h-4 rounded-sm bg-bg-soft border border-line/40 flex items-center justify-center shrink-0 text-ink-muted">
+        <Globe size={9} />
+      </span>
+    )
+  }
+  return (
+    <img
+      src={tab.favicon}
+      alt=""
+      className="w-4 h-4 rounded shrink-0"
+      onError={(e) => {
+        ;(e.target as HTMLImageElement).style.visibility = 'hidden'
+      }}
+    />
   )
 }

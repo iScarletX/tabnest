@@ -9,9 +9,10 @@
   body {
     @apply bg-bg text-ink font-sans antialiased;
     -webkit-font-smoothing: antialiased;
+    /* 顶部柔和光晕（深邃星空感）*/
     background-image:
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(139, 124, 255, 0.14), transparent 70%),
-      radial-gradient(ellipse 50% 40% at 90% 10%, rgba(99, 102, 241, 0.08), transparent 70%);
+      radial-gradient(ellipse 90% 50% at 50% -10%, rgba(124, 92, 255, 0.08), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 20%, rgba(91, 113, 227, 0.05), transparent 70%);
     background-attachment: fixed;
   }
   *::-webkit-scrollbar {
@@ -20,31 +21,31 @@
   }
   *::-webkit-scrollbar-track { background: transparent; }
   *::-webkit-scrollbar-thumb {
-    background: #2a3045;
+    background: #232838;
     border-radius: 999px;
   }
-  *::-webkit-scrollbar-thumb:hover { background: #3a4258; }
+  *::-webkit-scrollbar-thumb:hover { background: #2c3142; }
 }
 
 @layer components {
-  /* —— 卡片 —— */
+  /* ── 卡片 ── */
   .card {
-    @apply bg-bg-card border border-line/60 rounded-2xl shadow-card;
-    background-image: linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0) 100%);
+    @apply bg-bg-card border border-line/70 rounded-xl shadow-card;
+    background-image: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 50%);
   }
   .card-glass {
-    @apply rounded-2xl border border-line/50 shadow-card;
+    @apply rounded-xl border border-line/60 shadow-card;
     background:
-      linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 100%),
-      rgba(28, 32, 48, 0.6);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+      linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0) 60%),
+      rgba(19, 22, 29, 0.85);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
   }
 
-  /* —— 按钮 —— */
+  /* ── 按钮 ── */
   .btn {
     @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5
-           rounded-xl text-sm font-medium
+           rounded-lg text-[13px] font-medium
            bg-bg-soft border border-line/60 text-ink
            hover:bg-bg-hover hover:border-line-strong
            active:scale-[0.97]
@@ -52,29 +53,29 @@
   }
   .btn-primary {
     @apply inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5
-           rounded-xl text-sm font-medium
-           text-white shadow-glow
-           bg-brand-gradient
+           rounded-lg text-[13px] font-medium
+           text-white bg-brand-gradient
            hover:brightness-110 active:scale-[0.97]
            transition-all duration-150;
+    box-shadow: 0 1px 0 0 rgba(255,255,255,0.15) inset, 0 6px 16px -6px rgba(124, 92, 255, 0.55);
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-1.5 px-2.5 py-1
-           rounded-lg text-xs font-medium
+           rounded-md text-[12px] font-medium
            text-ink-soft hover:text-ink hover:bg-bg-hover
            transition-colors;
   }
   .btn-icon {
-    @apply p-1.5 rounded-lg text-ink-muted
+    @apply p-1.5 rounded-md text-ink-muted
            hover:text-ink hover:bg-bg-hover
            transition-colors;
   }
 
-  /* —— 标签芯片 —— */
+  /* ── 标签芯片 ── */
   .chip {
     @apply inline-flex items-center gap-1 px-2 py-0.5
            rounded-md text-[11px] font-medium
-           bg-bg-soft border border-line/50 text-ink-soft;
+           bg-bg-soft border border-line/60 text-ink-soft;
   }
   .chip-brand {
     @apply inline-flex items-center gap-1 px-2 py-0.5
@@ -82,11 +83,19 @@
            bg-brand-tint border border-brand/30 text-brand-glow;
   }
 
-  /* —— 输入框 —— */
+  /* ── 输入框 ── */
   .input {
-    @apply bg-bg-soft border border-line/60 rounded-xl px-3 py-2
-           text-sm text-ink placeholder:text-ink-muted
+    @apply bg-bg-soft border border-line/60 rounded-lg px-3 py-2
+           text-[13px] text-ink placeholder:text-ink-muted
            focus:outline-none focus:border-brand/60 focus:bg-bg-hover
            transition-colors;
+  }
+}
+
+/* —— 工具类 —— */
+@layer utilities {
+  /* 给卡片加柔光描边 */
+  .ring-brand {
+    box-shadow: 0 0 0 2px rgba(124, 92, 255, 0.35), 0 0 0 1px rgba(124, 92, 255, 0.5);
   }
 }

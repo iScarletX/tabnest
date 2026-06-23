@@ -7,6 +7,7 @@ type Listener = () => void
 type Action =
   | { type: 'addGroup'; group: Group }
   | { type: 'renameGroup'; id: string; name: string }
+  | { type: 'recolorGroup'; id: string; color: string }
   | { type: 'deleteGroup'; id: string }
   | { type: 'moveTab'; tabId: string; toGroupId: string | 'inbox'; toIndex?: number }
   | { type: 'deleteTab'; tabId: string }
@@ -76,6 +77,14 @@ export function dispatch(action: Action) {
         ...state,
         groups: state.groups.map((g) =>
           g.id === action.id ? { ...g, name: action.name } : g,
+        ),
+      }
+      break
+    case 'recolorGroup':
+      state = {
+        ...state,
+        groups: state.groups.map((g) =>
+          g.id === action.id ? { ...g, color: action.color } : g,
         ),
       }
       break
@@ -164,84 +173,65 @@ export function dispatch(action: Action) {
     }
     case 'aiAutoClassify': {
       // 本地规则版（v1）。v2 接真 LLM 时替换这里。
-      // 策略：按关键词匹配出语义标签，再模糊匹配现有分组。
-      // 如果现有分组都不匹配，则自动创建一个新分组。
-      const rules: { kw: RegExp; tag: string; icon: string; color: string }[] = [
-        { kw: /github|stackoverflow|sdk|api|gitlab|bitbucket|vscode|npm|pnpm/i,
-          tag: '开发', icon: '💻', color: '#5b8def' },
-        { kw: /figma|dribbble|behance|sketch|design/i,
-          tag: '设计', icon: '🎨', color: '#ab47bc' },
-        { kw: /arxiv|medium|smashing|substack|blog|paper|towardsdatascience|hackernews|ycombinator/i,
-          tag: '阅读', icon: '📚', color: '#66bb6a' },
-        { kw: /chatgpt|claude|gemini|openai|anthropic|huggingface|perplexity/i,
-          tag: 'AI 工具', icon: '🤖', color: '#8b7cff' },
-        { kw: /youtube|bilibili|netflix|spotify|twitch|iqiyi|youku/i,
-          tag: '娱乐', icon: '🎉', color: '#ef5350' },
-        { kw: /twitter|weibo|reddit|x\.com|instagram|tiktok|douyin/i,
-          tag: '社交', icon: '💬', color: '#f06292' },
-        { kw: /notion|feishu|larksuite|google\.com\/docs|wenku|yuque|confluence/i,
-          tag: '文档', icon: '📄', color: '#5b8def' },
-        { kw: /mail|gmail|outlook|yahoo|qq\.com\/mail/i,
-          tag: '邮箱', icon: '✉️', color: '#ffb74d' },
+      // 策略：不创建新分组。只能匹配到现有分组才归类，否则留在收件箱。
+      // 路径：URL/标题关键词 → 语义标签（如 开发/文档/社交） → 模糊匹配现有分组名
+      const rules: { kw: RegExp; tag: string; aliases: string[] }[] = [
+        // tag：AI 识别出的语义标签，aliases：常见的同义分组名
+        { kw: /github|stackoverflow|sdk|gitlab|bitbucket|vscode|npm|pnpm|leetcode/i,
+          tag: '开发', aliases: ['开发', 'dev', '工作', '代码', 'work', 'coding', 'programming', '技术', '项目', 'project'] },
+        { kw: /figma|dribbble|behance|sketch|invision|xd\./i,
+          tag: '设计', aliases: ['设计', 'design', '工作', 'work', '项目', '创作'] },
+        { kw: /arxiv|medium|smashing|substack|towardsdatascience|hackernews|ycombinator|paper|wikipedia/i,
+          tag: '阅读', aliases: ['阅读', 'reading', '学习', 'study', 'learn', '资料', '文章', '知识'] },
+        { kw: /chatgpt|claude\.ai|gemini\.google|openai\.com|anthropic|huggingface|perplexity|kimi|yuanbao|doubao/i,
+          tag: 'AI', aliases: ['ai', 'AI', '工具', 'tools', '效率', 'ai工具'] },
+        { kw: /youtube|bilibili|netflix|spotify|twitch|iqiyi|youku|tencent.*video|netease.*music/i,
+          tag: '娱乐', aliases: ['娱乐', 'fun', '生活', 'life', '视频', '音乐', '看片'] },
+        { kw: /twitter|weibo|reddit|x\.com|instagram|tiktok|douyin|xiaohongshu|red\./i,
+          tag: '社交', aliases: ['社交', 'social', '生活', 'life', '动态'] },
+        { kw: /notion|feishu|larkoffice|larksuite|google\.com\/docs|docs\.google|yuque|confluence|onenote/i,
+          tag: '文档', aliases: ['文档', 'docs', 'doc', '工作', 'work', '笔记', 'notes'] },
+        { kw: /mail|gmail|outlook|yahoo\.mail|mail\.qq\.com|mail\.163/i,
+          tag: '邮箱', aliases: ['邮箱', 'mail', 'email', '工作', 'work'] },
+        { kw: /taobao|jd\.com|tmall|pinduoduo|amazon|aliexpress|jingdong/i,
+          tag: '购物', aliases: ['购物', 'shopping', '生活', 'life'] },
+        { kw: /booking|airbnb|ctrip|trip\.com|qunar|fliggy|xiecheng/i,
+          tag: '出行', aliases: ['出行', 'travel', '生活', 'life', '旅行'] },
       ]
 
-      // 模糊匹配分组（名称包含关键词即可）
-      const findGroupForTag = (tag: string) => {
-        const tagLower = tag.toLowerCase()
+      // 模糊匹配现有分组：检查 tag + aliases
+      const findGroupForRule = (rule: { tag: string; aliases: string[] }) => {
+        const candidates = [rule.tag, ...rule.aliases].map((s) => s.toLowerCase())
         return state.groups.find((g) => {
           const n = g.name.toLowerCase()
-          // 双向包含：分组名含 tag 关键词、或 tag 包含分组关键词
-          return n.includes(tagLower) || tagLower.split(/\s/).some((kw) => n.includes(kw))
+          return candidates.some((c) => n.includes(c) || c.includes(n))
         })
       }
 
       const newInbox: string[] = []
-      const newGroupsByTag: Record<string, string> = {}
       let classified = 0
-      let createdGroups = 0
+      let unmatched = 0
 
       for (const tid of state.inbox) {
         const t = state.tabs[tid]
         if (!t) continue
         const hit = rules.find((r) => r.kw.test(`${t.title} ${t.url} ${t.domain}`))
-        if (!hit) {
+        const target = hit ? findGroupForRule(hit) : null
+
+        if (target) {
+          const targetId = target.id
+          state.groups = state.groups.map((g) =>
+            g.id === targetId ? { ...g, tabIds: [...g.tabIds, tid] } : g,
+          )
+          classified++
+        } else {
+          // 没匹配上 → 留在收件箱等用户手动处理
           newInbox.push(tid)
-          continue
+          unmatched++
         }
-
-        // 1. 先看现有分组
-        let target = findGroupForTag(hit.tag)
-
-        // 2. 看本次分类周期里已创建过该 tag 的新分组
-        if (!target && newGroupsByTag[hit.tag]) {
-          target = state.groups.find((g) => g.id === newGroupsByTag[hit.tag]) ?? undefined
-        }
-
-        // 3. 都没有 → 创建新分组
-        if (!target) {
-          const newGroup = {
-            id: `g-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-            name: hit.tag,
-            icon: hit.icon,
-            color: hit.color,
-            tabIds: [],
-            createdAt: Date.now(),
-          }
-          state.groups = [...state.groups, newGroup]
-          newGroupsByTag[hit.tag] = newGroup.id
-          target = newGroup
-          createdGroups++
-        }
-
-        // 4. 插入目标分组
-        const targetId = target.id
-        state.groups = state.groups.map((g) =>
-          g.id === targetId ? { ...g, tabIds: [...g.tabIds, tid] } : g,
-        )
-        classified++
       }
       state = { ...state, inbox: newInbox }
-      console.log(`[TabNest] AI 分类完成：${classified} 个标签入盒，新建 ${createdGroups} 个分组。`)
+      console.log(`[TabNest] 分类完成：${classified} 个入分组，${unmatched} 个留在收件箱。`)
       break
     }
     case 'replaceState':

@@ -19,12 +19,12 @@ import { dispatch, useStore, getState, ensureLoaded } from '../store'
 import { applyPlanToBrowser, chromeTabToTab } from '../lib/chrome-api'
 
 const PRESET_GROUPS = [
-  { icon: '💼', name: '工作', color: '#5b8def' },
-  { icon: '📚', name: '学习', color: '#66bb6a' },
-  { icon: '🎮', name: '项目', color: '#f06292' },
-  { icon: '🧰', name: '工具', color: '#ffb74d' },
-  { icon: '🍔', name: '生活', color: '#ef5350' },
-  { icon: '🎨', name: '灵感', color: '#ab47bc' },
+  { icon: '💼', name: '工作', color: '#5b71e3' },
+  { icon: '📚', name: '学习', color: '#4cc38a' },
+  { icon: '🎮', name: '项目', color: '#d97757' },
+  { icon: '🧰', name: '工具', color: '#e3b341' },
+  { icon: '🍔', name: '生活', color: '#ed6a5e' },
+  { icon: '🎨', name: '灵感', color: '#a878e8' },
 ]
 
 export function Options() {

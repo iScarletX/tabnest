@@ -122,9 +122,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     return
   }
   if (changeInfo.url) {
+    const oldDomain = domainOf(meta.url)
+    const newDomain = domainOf(changeInfo.url)
     meta.url = changeInfo.url
-    // URL 跳变 → 重置出生时间（防止用户在搜索结果页停 2 分钟然后跳到目标页就被归档）
-    meta.bornAt = Date.now()
+    // 只在跨域名跳转时重置计时（同站内切页不重置）
+    if (oldDomain && newDomain && oldDomain !== newDomain) {
+      meta.bornAt = Date.now()
+    }
   }
   if (changeInfo.title) meta.title = changeInfo.title
   if (changeInfo.favIconUrl) meta.favicon = changeInfo.favIconUrl

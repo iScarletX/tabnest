@@ -4,30 +4,57 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: { DEFAULT: '#0f1115', soft: '#151821', card: '#1c2030', hover: '#232838' },
-        line: { DEFAULT: '#2a3045', soft: '#1f2433', strong: '#3a4258' },
-        ink: { DEFAULT: '#e7eaf3', soft: '#a8aec0', muted: '#6b7186', faint: '#4a5066' },
-        brand: {
-          DEFAULT: '#8b7cff',
-          soft: '#5a4fc4',
-          glow: '#a597ff',
-          tint: 'rgba(139, 124, 255, 0.12)',
-          tintHi: 'rgba(139, 124, 255, 0.22)',
+        // ── 背景层（更深、更冷、更克制） ──
+        bg: {
+          DEFAULT: '#0a0c10',     // 主背景：墨蓝近黑
+          soft:    '#101218',     // 输入框、二级表面
+          card:    '#13161d',     // 卡片
+          hover:   '#1a1e27',     // 卡片悬停
+          elevate: '#1f242f',     // 浮层、菜单
         },
-        success: '#4ade80',
-        warn: '#fbbf24',
-        danger: '#f87171',
+        // ── 描边 ──
+        line: {
+          DEFAULT: '#1e2230',
+          soft:    '#171a23',
+          strong:  '#2c3142',
+        },
+        // ── 文字 ──
+        ink: {
+          DEFAULT: '#e6e8ee',     // 主文字
+          soft:    '#9ba2b5',     // 次文字
+          muted:   '#5d6478',     // 注释、占位
+          faint:   '#3a4055',     // 装饰
+        },
+        // ── 强调色：墨色蓝紫（比之前更克制） ──
+        brand: {
+          DEFAULT: '#7c5cff',     // 主色
+          soft:    '#5d44d4',
+          glow:    '#9b85ff',
+          tint:    'rgba(124, 92, 255, 0.10)',
+          tintHi:  'rgba(124, 92, 255, 0.18)',
+          ring:    'rgba(124, 92, 255, 0.35)',
+        },
+        // ── 状态色（降饱和柔和版） ──
+        success: '#4cc38a',
+        warn:    '#e3b341',
+        danger:  '#ed6a5e',
+        info:    '#5b9cd6',
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"Inter"', '"PingFang SC"', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
-        'brand-gradient': 'linear-gradient(135deg, #8b7cff 0%, #6366f1 100%)',
+        // 强调按钮渐变（紫 → 蓝紫）
+        'brand-gradient': 'linear-gradient(135deg, #7c5cff 0%, #5b71e3 100%)',
+        // 卡片高光
+        'card-shine': 'linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0) 60%)',
       },
       boxShadow: {
-        card: '0 1px 0 0 rgba(255,255,255,0.04) inset, 0 4px 24px -8px rgba(0,0,0,0.4)',
-        glow: '0 8px 32px -8px rgba(139, 124, 255, 0.4)',
-        toast: '0 16px 48px -16px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,124,255,0.15)',
+        // 轻 + 精致的多层投影
+        card: '0 1px 0 0 rgba(255,255,255,0.04) inset, 0 1px 2px 0 rgba(0,0,0,0.3), 0 8px 24px -8px rgba(0,0,0,0.4)',
+        glow: '0 0 0 1px rgba(124, 92, 255, 0.4), 0 8px 24px -6px rgba(124, 92, 255, 0.45)',
+        toast: '0 20px 50px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(124,92,255,0.18)',
+        ring: '0 0 0 3px rgba(124, 92, 255, 0.25)',
       },
       animation: {
         'fade-in': 'fadeIn 200ms ease-out',

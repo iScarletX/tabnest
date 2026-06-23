@@ -1,10 +1,10 @@
 import { useStore } from '../store'
 
 const modeInfo = {
-  A: { icon: '🤫', label: '手动整理', color: '#60a5fa' },
-  B: { icon: '🔔', label: '轻提醒', color: '#fbbf24' },
-  C: { icon: '✨', label: 'AI 自动归档', color: '#a78bfa' },
-  D: { icon: '🎯', label: '实时归位', color: '#34d399' },
+  A: { icon: '🤫', label: '手动整理', color: '#5b9cd6' },
+  B: { icon: '🔔', label: '轻提醒', color: '#e3b341' },
+  C: { icon: '✨', label: 'AI 自动归档', color: '#9b85ff' },
+  D: { icon: '🎯', label: '实时归位', color: '#4cc38a' },
 }
 
 interface Props {
