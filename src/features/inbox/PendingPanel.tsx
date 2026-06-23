@@ -8,13 +8,16 @@ import { useStore, dispatch } from '../../store'
 import { chromeTabToTab } from '../../lib/chrome-api'
 import type { Tab } from '../../store/types'
 
-function buildLiveTabs(chromeTabs: chrome.tabs.Tab[], groupedUrls: Set<string>): Tab[] {
-  // 只过滤掉已在分组里的 URL，待手动整理里的同 URL 重新打开后也会重现在待分类
+function buildLiveTabs(
+  chromeTabs: chrome.tabs.Tab[],
+  managedUrls: Set<string>,
+): Tab[] {
+  // 过滤掉【已在分组 或 已在待手动整理】的 URL，避免同一个标签同时出现在两个面板
   return chromeTabs
     .filter((t) => {
       if (!t.url) return false
       if (t.url.startsWith('chrome://') || t.url.startsWith('chrome-extension://') || t.url.startsWith('about:')) return false
-      if (groupedUrls.has(t.url)) return false
+      if (managedUrls.has(t.url)) return false
       return true
     })
     .map((t) => {
@@ -27,8 +30,9 @@ export function PendingPanel() {
   const state = useStore()
   const groups = state.groups
 
-  // 只取【分组内】的 URL。待手动整理里的 URL 不去重，这样关掉后重开仍会出现在待分类
-  const groupedUrls = useMemo(() => {
+  // 【分组内 + 待手动整理】的 URL 都不重复出现在待分类
+  // 在待手动整理里刮掉某个标签 → 重新打开该网页 → 会重新出现在待分类
+  const managedUrls = useMemo(() => {
     const set = new Set<string>()
     for (const g of state.groups) {
       for (const tid of g.tabIds) {
@@ -36,8 +40,12 @@ export function PendingPanel() {
         if (t) set.add(t.url)
       }
     }
+    for (const tid of state.inbox) {
+      const t = state.tabs[tid]
+      if (t) set.add(t.url)
+    }
     return set
-  }, [state.groups, state.tabs])
+  }, [state.groups, state.inbox, state.tabs])
 
   const [liveTabs, setLiveTabs] = useState<Tab[]>([])
 
@@ -48,7 +56,7 @@ export function PendingPanel() {
         if (!chrome?.tabs?.query) return
         const tabs = await chrome.tabs.query({ currentWindow: true })
         if (cancelled) return
-        setLiveTabs(buildLiveTabs(tabs, groupedUrls))
+        setLiveTabs(buildLiveTabs(tabs, managedUrls))
       } catch {}
     }
     refresh()
@@ -64,7 +72,7 @@ export function PendingPanel() {
         if (chrome?.tabs?.onUpdated) chrome.tabs.onUpdated.removeListener(handler)
       } catch {}
     }
-  }, [groupedUrls])
+  }, [managedUrls])
 
   const moveSingle = (tab: Tab, groupId: string) => {
     // 把这个 live tab 入库并直接放到对应分组
