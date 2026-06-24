@@ -151,6 +151,16 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 /** 防重入：避免自己触发的 onUpdated 又被自己处理 */
 const jumpInProgress = new Set<number>()
 
+/** 规范化 URL：去掉 query string 和 hash，仅保留 origin + pathname */
+function normalizeUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    return `${u.origin}${u.pathname}`
+  } catch {
+    return url
+  }
+}
+
 async function maybeJumpToExisting(newTabId: number, url: string) {
   if (jumpInProgress.has(newTabId)) return
 
@@ -158,29 +168,40 @@ async function maybeJumpToExisting(newTabId: number, url: string) {
   const state = getState()
   if (!state.preferences.autoJumpToExisting) return
 
-  // 1. 查 TabNest 里是否有同 URL 的已归组标签（待手动整理里的不算）
+  const normalized = normalizeUrl(url)
+
+  // 1. 查 TabNest 里是否有同 URL 的已归组标签（忽略查询参数）
   let matchedInGroup = false
   for (const g of state.groups) {
     for (const tid of g.tabIds) {
       const t = state.tabs[tid]
-      if (t && t.url === url) {
+      if (t && normalizeUrl(t.url) === normalized) {
         matchedInGroup = true
         break
       }
     }
     if (matchedInGroup) break
   }
-  if (!matchedInGroup) return
+  if (!matchedInGroup) {
+    console.log('[TabNest] 不跳转：URL 不在任何分组里', normalized)
+    return
+  }
 
-  // 2. 在浏览器里查找同 URL 的标签（不依赖 chromeTabId）
+  // 2. 在浏览器里查找同 URL 的标签
+  // chrome.tabs.query 支持通配符：用 origin+pathname+"*" 覆盖查询参数变体
   let candidates: chrome.tabs.Tab[] = []
   try {
-    candidates = await chrome.tabs.query({ url })
+    candidates = await chrome.tabs.query({ url: normalized + '*' })
   } catch {}
 
-  // 过滤掉刚刚刚打开的这个新标签本身
-  const others = candidates.filter((t) => t.id !== newTabId)
-  if (others.length === 0) return
+  // 手动再过滤一次（双保险）
+  const others = candidates.filter(
+    (t) => t.id !== newTabId && t.url && normalizeUrl(t.url) === normalized,
+  )
+  if (others.length === 0) {
+    console.log('[TabNest] 不跳转：浏览器里没找到同 URL 的原标签', normalized)
+    return
+  }
 
   // 优先选择【在 Tab Group 里】的那个原标签
   const inGroup = others.find((t) => t.groupId != null && t.groupId !== -1)
@@ -202,7 +223,7 @@ async function maybeJumpToExisting(newTabId: number, url: string) {
     }
     // 3. 关掉刚刚新开的重复标签
     await chrome.tabs.remove(newTabId)
-    console.log('[TabNest] 重复打开已跳转到原标签:', url)
+    console.log('[TabNest] ✅ 重复打开已跳转到原标签:', normalized)
   } catch (e) {
     console.warn('[TabNest] auto-jump failed', e)
   } finally {
