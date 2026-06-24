@@ -8,6 +8,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { useStore, dispatch } from '../../store'
 import { TabCard } from '../tabs/TabCard'
+import { normalizeUrl } from '../../lib/chrome-api'
 
 export function InboxPanel() {
   const state = useStore()
@@ -40,9 +41,22 @@ export function InboxPanel() {
         {inbox.length > 0 && (
           <button
             className="btn text-xs py-1 text-danger hover:bg-danger/15 hover:border-danger/40"
-            onClick={() => {
-              if (confirm(`确定清空所有 ${inbox.length} 个待手动整理的标签？`)) {
+            onClick={async () => {
+              if (confirm(`确定清空所有 ${inbox.length} 个待手动整理的标签？这将同时关闭它们在浏览器中打开的页面。`)) {
+                // 1. 从 TabNest 数据库移除
                 inbox.forEach((t) => dispatch({ type: 'deleteTab', tabId: t.id }))
+                
+                // 2. 双向联动：如果在浏览器里开着，也一起关掉
+                try {
+                  const allTabs = await chrome.tabs.query({})
+                  const normSet = new Set(inbox.map(t => normalizeUrl(t.url)))
+                  const toClose = allTabs.filter(t => t.url && normSet.has(normalizeUrl(t.url)))
+                  for (const t of toClose) {
+                    if (t.id != null) chrome.tabs.remove(t.id).catch(() => {})
+                  }
+                } catch (err) {
+                  console.warn('[TabNest] 联动批量关闭浏览器标签失败', err)
+                }
               }
             }}
           >

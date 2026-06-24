@@ -2,7 +2,7 @@ import { X, ExternalLink, GripVertical, Globe } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { dispatch, useStore } from '../../store'
-import { focusOrOpen } from '../../lib/chrome-api'
+import { focusOrOpen, normalizeUrl } from '../../lib/chrome-api'
 import type { Tab } from '../../store/types'
 import clsx from 'clsx'
 import { useRef } from 'react'
@@ -100,11 +100,26 @@ export function TabCard({ tab, showConfidence }: Props) {
         </button>
         <button
           className="p-1 rounded-lg text-ink-muted hover:bg-danger/20 hover:text-danger transition-colors"
-          onClick={(e) => {
+          onClick={async (e) => {
             e.stopPropagation()
+            // 1. 从 TabNest 数据库移除
             dispatch({ type: 'deleteTab', tabId: tab.id })
+            
+            // 2. ✨ 双向联动：如果在浏览器里开着，也一起关掉！
+            try {
+              const allTabs = await chrome.tabs.query({})
+              const norm = normalizeUrl(tab.url)
+              const toClose = allTabs.filter((t) => t.url && normalizeUrl(t.url) === norm)
+              if (toClose.length > 0) {
+                for (const t of toClose) {
+                  if (t.id != null) chrome.tabs.remove(t.id).catch(() => {})
+                }
+              }
+            } catch (err) {
+              console.warn('[TabNest] 联动关闭浏览器标签失败', err)
+            }
           }}
-          title="从 TabNest 移除"
+          title="从 TabNest 移除并关闭浏览器标签"
         >
           <X size={12} />
         </button>
