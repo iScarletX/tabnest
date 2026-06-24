@@ -3,7 +3,7 @@
  * 只显示已经在 state.inbox 里的标签（不再混合"打开中的标签"）
  */
 import { useMemo } from 'react'
-import { HelpCircle } from 'lucide-react'
+import { HelpCircle, Trash2 } from 'lucide-react'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { useStore, dispatch } from '../../store'
@@ -37,6 +37,18 @@ export function InboxPanel() {
           </div>
           {inbox.length > 0 && <span className="chip ml-1">{inbox.length}</span>}
         </div>
+        {inbox.length > 0 && (
+          <button
+            className="btn text-xs py-1 text-danger hover:bg-danger/15 hover:border-danger/40"
+            onClick={() => {
+              if (confirm(`确定清空所有 ${inbox.length} 个待手动整理的标签？`)) {
+                inbox.forEach((t) => dispatch({ type: 'deleteTab', tabId: t.id }))
+              }
+            }}
+          >
+            <Trash2 size={11} /> 全部清空
+          </button>
+        )}
       </div>
 
       <div className="p-3 space-y-2 max-h-[40vh] overflow-y-auto">
@@ -66,12 +78,6 @@ export function InboxPanel() {
                     {g.name}
                   </button>
                 ))}
-                <button
-                  className="text-[11px] px-2 py-0.5 rounded-md text-danger hover:bg-danger/15 ml-auto"
-                  onClick={() => dispatch({ type: 'deleteTab', tabId: tab.id })}
-                >
-                  丢弃
-                </button>
               </div>
             </div>
           ))}

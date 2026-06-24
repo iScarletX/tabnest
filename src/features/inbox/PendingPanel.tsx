@@ -3,7 +3,7 @@
  * 实时反映浏览器中的标签状态，是用户主动整理的入口
  */
 import { useEffect, useMemo, useState } from 'react'
-import { X, Inbox, Sparkles } from 'lucide-react'
+import { X, Inbox, Sparkles, Trash2 } from 'lucide-react'
 import { useStore, dispatch, getState } from '../../store'
 import { chromeTabToTab } from '../../lib/chrome-api'
 import type { Tab } from '../../store/types'
@@ -123,9 +123,24 @@ export function PendingPanel() {
           {liveTabs.length > 0 && <span className="chip-brand ml-1">{liveTabs.length}</span>}
         </div>
         {liveTabs.length > 0 && (
-          <button className="btn-primary text-xs py-1.5" onClick={handleClassifyAll}>
-            <Sparkles size={12} /> AI 一键分类
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              className="btn text-xs py-1 text-danger hover:bg-danger/15 hover:border-danger/40"
+              onClick={() => {
+                if (confirm(`确定关闭所有 ${liveTabs.length} 个待分类的浏览器标签？`)) {
+                  liveTabs.forEach((t) => {
+                    if (t.chromeTabId) chrome.tabs.remove(t.chromeTabId).catch(() => {})
+                  })
+                }
+              }}
+              title="关闭所有未归类的浏览器标签"
+            >
+              <Trash2 size={11} /> 全部关闭
+            </button>
+            <button className="btn-primary text-xs py-1.5" onClick={handleClassifyAll}>
+              <Sparkles size={12} /> AI 一键分类
+            </button>
+          </div>
         )}
       </div>
 
