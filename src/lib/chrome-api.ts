@@ -117,28 +117,35 @@ export async function applyPlanToBrowser(
 
     const groupTitle = `${group.icon} ${group.name}`
 
-    // 1. 为分组的每个标签确保有一个浏览器 tab
+    // 1. 为分组的每个标签确保有一个浏览器 tab（同时按 normalize URL 去重）
     const tabIds: number[] = []
+    const usedNormalizedUrls = new Set<string>()
     for (const tid of group.tabIds) {
       const meta = tabsMap[tid]
       if (!meta) continue
 
-      // 已经在浏览器里？
+      // 应用层去重：同一个 URL 只加一次到 Chrome Tab Group
+      const norm = normalizeUrl(meta.url)
+      if (usedNormalizedUrls.has(norm)) {
+        console.log('[TabNest] applyPlan 跳过重复 URL:', meta.url)
+        continue
+      }
+      usedNormalizedUrls.add(norm)
+
+      // 在浏览器里查找同 URL（包括同类似 URL 表达式）
       let chromeTab: chrome.tabs.Tab | null = null
-      if (meta.chromeTabId != null) {
-        try { chromeTab = await chrome.tabs.get(meta.chromeTabId) } catch { chromeTab = null }
-      }
-      if (!chromeTab) {
-        const found = await chrome.tabs.query({ url: meta.url })
-        chromeTab = found[0] ?? null
-      }
+      try {
+        const found = await chrome.tabs.query({ url: norm + '*' })
+        // 双保险：手动再 normalize 一次过滤
+        chromeTab = found.find((t) => t.url && normalizeUrl(t.url) === norm) ?? null
+      } catch {}
+
       if (!chromeTab) {
         chromeTab = await chrome.tabs.create({ url: meta.url, active: false })
         openedTabs++
       }
       if (chromeTab.id != null) {
         tabIds.push(chromeTab.id)
-        // 记录 chromeTabId，供后续「重复打开自动跳转」使用
         meta.chromeTabId = chromeTab.id
       }
     }

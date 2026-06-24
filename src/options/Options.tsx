@@ -61,9 +61,13 @@ export function Options() {
     }
   }
 
-  // 一键应用方案：只把【已分组的标签】写入浏览器 Tab Groups、折叠释放内存
+  // 一键应用方案：
+  // 1. 先去重清理已有重复标签
+  // 2. 写入浏览器 Tab Groups + 折叠
   const handleApplyPlan = async () => {
     try {
+      // 1. 先去重
+      dispatch({ type: 'dedupeAll' })
       const s = getState()
       const result = await applyPlanToBrowser(s.groups, s.tabs)
       showToast({

@@ -34,6 +34,7 @@ type Action =
   | { type: 'setPref'; patch: Partial<TabNestState['preferences']> }
   | { type: 'aiAutoClassify' }
   | { type: 'replaceState'; state: TabNestState }
+  | { type: 'dedupeAll' }
 
 let state: TabNestState = initialState
 const listeners = new Set<Listener>()
@@ -263,6 +264,48 @@ export function dispatch(action: Action) {
     case 'replaceState':
       state = action.state
       break
+    case 'dedupeAll': {
+      // 扫描所有分组和收件箱，按 normalize URL 去重
+      // 保留最早出现的标签，后续重复的全部移除
+      const seen = new Set<string>()
+      let removed = 0
+      const cleanedTabs = { ...state.tabs }
+
+      state.groups = state.groups.map((g) => {
+        const keptIds: string[] = []
+        for (const tid of g.tabIds) {
+          const t = cleanedTabs[tid]
+          if (!t) continue
+          const norm = normalizeUrl(t.url)
+          if (seen.has(norm)) {
+            removed++
+            delete cleanedTabs[tid]
+          } else {
+            seen.add(norm)
+            keptIds.push(tid)
+          }
+        }
+        return { ...g, tabIds: keptIds }
+      })
+
+      const newInbox: string[] = []
+      for (const tid of state.inbox) {
+        const t = cleanedTabs[tid]
+        if (!t) continue
+        const norm = normalizeUrl(t.url)
+        if (seen.has(norm)) {
+          removed++
+          delete cleanedTabs[tid]
+        } else {
+          seen.add(norm)
+          newInbox.push(tid)
+        }
+      }
+
+      state = { ...state, tabs: cleanedTabs, inbox: newInbox }
+      console.log(`[TabNest] 去重完成，移除 ${removed} 个重复标签`)
+      break
+    }
   }
   notify()
 }
