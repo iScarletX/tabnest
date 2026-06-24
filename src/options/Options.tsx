@@ -16,8 +16,7 @@ import { InboxPanel } from '../features/inbox/InboxPanel'
 import { SettingsModal } from '../features/settings/SettingsModal'
 import { MemoryStats } from '../features/stats/MemoryStats'
 import { dispatch, useStore, getState, ensureLoaded } from '../store'
-import { applyPlanToBrowser, chromeTabToTab } from '../lib/chrome-api'
-import type { Tab } from '../store/types'
+import { applyPlanToBrowser } from '../lib/chrome-api'
 
 const PRESET_GROUPS = [
   { icon: '💼', name: '工作', color: '#5b71e3' },
@@ -62,59 +61,20 @@ export function Options() {
     }
   }
 
-  // 一键智能整理：AI 分类 超 + 写入浏览器 Tab Groups
-  const handleSmartOrganize = async () => {
+  // 一键应用方案：只把【已分组的标签】写入浏览器 Tab Groups、折叠释放内存
+  const handleApplyPlan = async () => {
     try {
-      // 1. 把浏览器里所有未归组的标签入库到待手动整理
-      const chromeTabs = await chrome.tabs.query({ currentWindow: true })
-      const groupedUrls = new Set(
-        getState().groups.flatMap((g) =>
-          g.tabIds.map((id) => getState().tabs[id]?.url).filter(Boolean) as string[],
-        ),
-      )
-      const fresh: Tab[] = chromeTabs
-        .filter((t) => {
-          if (!t.url) return false
-          if (t.url.startsWith('chrome://') || t.url.startsWith('chrome-extension://') || t.url.startsWith('about:')) return false
-          return !groupedUrls.has(t.url)
-        })
-        .map((t) => {
-          const base = chromeTabToTab(t)
-          return { ...base, id: `tab-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }
-        })
-      if (fresh.length > 0) {
-        // 去重：待手动整理里已有的 URL 不重复入库
-        const inboxUrls = new Set(
-          getState().inbox.map((id) => getState().tabs[id]?.url).filter(Boolean) as string[],
-        )
-        const toImport = fresh.filter((t) => !inboxUrls.has(t.url))
-        if (toImport.length > 0) {
-          dispatch({ type: 'upsertTabs', tabs: toImport, groupId: 'inbox' })
-        }
-      }
-
-      // 2. AI 分类待手动整理里的标签
-      const beforeInbox = getState().inbox.length
-      dispatch({ type: 'aiAutoClassify' })
-      const afterInbox = getState().inbox.length
-      const classified = beforeInbox - afterInbox
-
-      // 3. 写入浏览器 Tab Groups
       const s = getState()
       const result = await applyPlanToBrowser(s.groups, s.tabs)
-
-      // 4. 反馈
-      const parts: string[] = []
-      if (classified > 0) parts.push(`分类 ${classified} 个标签`)
-      if (result.appliedGroups > 0) parts.push(`应用 ${result.appliedGroups} 个分组到浏览器`)
-      if (afterInbox > 0) parts.push(`${afterInbox} 个待手动处理`)
-
       showToast({
-        title: parts.length > 0 ? `✨ ${parts[0]}` : '✨ 整理完成',
-        desc: parts.slice(1).join(' ・ ') || '所有标签已到位',
+        title: `✨ 已应用 ${result.appliedGroups} 个分组`,
+        desc:
+          result.openedTabs > 0
+            ? `打开了 ${result.openedTabs} 个新标签并折叠到 Tab Group`
+            : '所有分组已写入浏览器、折叠起来',
       })
     } catch (e: any) {
-      showToast({ title: '⚠️ 整理失败', desc: e?.message })
+      showToast({ title: '⚠️ 应用失败', desc: e?.message })
     }
   }
 
@@ -125,7 +85,7 @@ export function Options() {
 
         <main className="flex-1 w-full max-w-6xl mx-auto px-6 py-6 space-y-5">
           {/* ① 内存总览 + 一键应用 */}
-          <MemoryStats onApply={handleSmartOrganize} />
+          <MemoryStats onApply={handleApplyPlan} />
 
           {/* ② 待分类（最上方，浏览器里打开但还没归类的）*/}
           <PendingPanel />
