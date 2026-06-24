@@ -142,10 +142,11 @@ export function dispatch(action: Action) {
       state = { ...state }
       break
     case 'addTab': {
-      // 先查重（按 normalize URL）：如果已在某处存在，则不重复加入
+      // 先查重（按 normalize URL）。如果已在某个分组里，直接跳过。
+      // 如果在待手动整理里，也跳过（避免重复）
       const existing = findExistingByUrl(state, action.tab.url)
       if (existing) {
-        console.log('[TabNest] addTab 跳过重复 URL:', action.tab.url)
+        console.log('[TabNest] addTab 跳过重复 URL (已在', existing.where, '):', action.tab.url)
         break
       }
       state.tabs = { ...state.tabs, [action.tab.id]: action.tab }
@@ -162,7 +163,7 @@ export function dispatch(action: Action) {
     case 'upsertTabs': {
       const newTabs = { ...state.tabs }
       const newIds: string[] = []
-      // 演进式去重：对每个要插入的 tab，检查会不会和现有或本批已加的重复
+      // 收集现有全部 normalize URL（分组 + 收件箱）
       const seenUrls = new Set<string>()
       for (const g of state.groups) {
         for (const tid of g.tabIds) {

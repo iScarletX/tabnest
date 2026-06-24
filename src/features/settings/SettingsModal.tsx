@@ -97,6 +97,37 @@ export function SettingsModal({ open, onClose }: Props) {
             </div>
           </section>
 
+          <section>
+            <h3 className="text-sm font-semibold mb-3 tracking-tight text-danger">危险区</h3>
+            <p className="text-xs text-ink-muted mb-3">
+              遇到重复标签、存储错乱等问题时，可以一键重置
+            </p>
+            <div className="space-y-2">
+              <button
+                className="w-full btn text-sm py-2"
+                onClick={() => {
+                  if (confirm('扫描并移除所有重复的标签？')) {
+                    dispatch({ type: 'dedupeAll' })
+                  }
+                }}
+              >
+                扫描并去除重复标签
+              </button>
+              <button
+                className="w-full btn text-sm py-2 text-danger border-danger/40 hover:bg-danger/15"
+                onClick={() => {
+                  if (confirm('清空 TabNest 所有数据（分组 · 标签 · 设置）并恢复初始状态？不可退。')) {
+                    chrome.storage.local.clear(() => {
+                      window.location.reload()
+                    })
+                  }
+                }}
+              >
+                💥 完全重置 TabNest（不可退）
+              </button>
+            </div>
+          </section>
+
           <section className="text-center text-[11px] text-ink-muted pt-4 border-t border-line/40">
             TabNest 🪺 v0.1.4 · MIT License · 数据 100% 本地存储
           </section>

@@ -132,12 +132,11 @@ export async function applyPlanToBrowser(
       }
       usedNormalizedUrls.add(norm)
 
-      // 在浏览器里查找同 URL（包括同类似 URL 表达式）
+      // 在浏览器里查找同 URL：查所有 tabs 超 normalize 过滤（不用不可靠的 match pattern）
       let chromeTab: chrome.tabs.Tab | null = null
       try {
-        const found = await chrome.tabs.query({ url: norm + '*' })
-        // 双保险：手动再 normalize 一次过滤
-        chromeTab = found.find((t) => t.url && normalizeUrl(t.url) === norm) ?? null
+        const allTabs = await chrome.tabs.query({})
+        chromeTab = allTabs.find((t) => t.url && normalizeUrl(t.url) === norm) ?? null
       } catch {}
 
       if (!chromeTab) {
