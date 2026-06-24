@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { X, Inbox, Sparkles, Trash2 } from 'lucide-react'
 import { useStore, dispatch, getState } from '../../store'
-import { chromeTabToTab } from '../../lib/chrome-api'
+import { chromeTabToTab, normalizeUrl } from '../../lib/chrome-api'
 import type { Tab } from '../../store/types'
 import { showToast } from '../../shared/Toast'
 
@@ -13,12 +13,12 @@ function buildLiveTabs(
   chromeTabs: chrome.tabs.Tab[],
   managedUrls: Set<string>,
 ): Tab[] {
-  // 过滤掉【已在分组 或 已在待手动整理】的 URL，避免同一个标签同时出现在两个面板
+  // 按 normalize 后的 URL 去重（忽略查询参数和 hash）
   return chromeTabs
     .filter((t) => {
       if (!t.url) return false
       if (t.url.startsWith('chrome://') || t.url.startsWith('chrome-extension://') || t.url.startsWith('about:')) return false
-      if (managedUrls.has(t.url)) return false
+      if (managedUrls.has(normalizeUrl(t.url))) return false
       return true
     })
     .map((t) => {
@@ -31,19 +31,18 @@ export function PendingPanel() {
   const state = useStore()
   const groups = state.groups
 
-  // 【分组内 + 待手动整理】的 URL 都不重复出现在待分类
-  // 在待手动整理里刮掉某个标签 → 重新打开该网页 → 会重新出现在待分类
+  // 【分组内 + 待手动整理】的 URL（normalize 后）都不重复出现在待分类
   const managedUrls = useMemo(() => {
     const set = new Set<string>()
     for (const g of state.groups) {
       for (const tid of g.tabIds) {
         const t = state.tabs[tid]
-        if (t) set.add(t.url)
+        if (t) set.add(normalizeUrl(t.url))
       }
     }
     for (const tid of state.inbox) {
       const t = state.tabs[tid]
-      if (t) set.add(t.url)
+      if (t) set.add(normalizeUrl(t.url))
     }
     return set
   }, [state.groups, state.inbox, state.tabs])

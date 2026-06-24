@@ -9,6 +9,20 @@ export function domainOf(url: string): string {
   }
 }
 
+/** 规范化 URL：去掉 query string 和 hash，仅保留 origin + pathname
+ *  并去掉末尾斜杠以正确去重
+ */
+export function normalizeUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    let path = u.pathname
+    if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1)
+    return `${u.origin}${path}`
+  } catch {
+    return url
+  }
+}
+
 /** favicon URL（Chrome 内置 favicon 服务） */
 export function faviconOf(url: string): string {
   const u = `https://www.google.com/s2/favicons?domain=${domainOf(url)}&sz=64`

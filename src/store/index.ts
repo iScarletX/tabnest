@@ -2,6 +2,23 @@ import { useEffect, useState } from 'react'
 import type { TabNestState, Tab, Group } from './types'
 import { initialState } from './defaults'
 import { loadState, saveState, onStateChange } from './storage'
+import { normalizeUrl } from '../lib/chrome-api'
+
+/** 查找某个 URL 已在哪个位置（返回存在的 tab id 和位置） */
+function findExistingByUrl(s: TabNestState, url: string): { tabId: string; where: 'group' | 'inbox' } | null {
+  const target = normalizeUrl(url)
+  for (const g of s.groups) {
+    for (const tid of g.tabIds) {
+      const t = s.tabs[tid]
+      if (t && normalizeUrl(t.url) === target) return { tabId: tid, where: 'group' }
+    }
+  }
+  for (const tid of s.inbox) {
+    const t = s.tabs[tid]
+    if (t && normalizeUrl(t.url) === target) return { tabId: tid, where: 'inbox' }
+  }
+  return null
+}
 
 type Listener = () => void
 type Action =
@@ -124,6 +141,12 @@ export function dispatch(action: Action) {
       state = { ...state }
       break
     case 'addTab': {
+      // 先查重（按 normalize URL）：如果已在某处存在，则不重复加入
+      const existing = findExistingByUrl(state, action.tab.url)
+      if (existing) {
+        console.log('[TabNest] addTab 跳过重复 URL:', action.tab.url)
+        break
+      }
       state.tabs = { ...state.tabs, [action.tab.id]: action.tab }
       if (action.groupId === 'inbox') {
         state.inbox = [...state.inbox, action.tab.id]
@@ -138,9 +161,27 @@ export function dispatch(action: Action) {
     case 'upsertTabs': {
       const newTabs = { ...state.tabs }
       const newIds: string[] = []
+      // 演进式去重：对每个要插入的 tab，检查会不会和现有或本批已加的重复
+      const seenUrls = new Set<string>()
+      for (const g of state.groups) {
+        for (const tid of g.tabIds) {
+          const t = state.tabs[tid]
+          if (t) seenUrls.add(normalizeUrl(t.url))
+        }
+      }
+      for (const tid of state.inbox) {
+        const t = state.tabs[tid]
+        if (t) seenUrls.add(normalizeUrl(t.url))
+      }
       for (const t of action.tabs) {
-        if (!newTabs[t.id]) newIds.push(t.id)
+        const norm = normalizeUrl(t.url)
+        if (seenUrls.has(norm)) {
+          console.log('[TabNest] upsertTabs 跳过重复 URL:', t.url)
+          continue
+        }
+        seenUrls.add(norm)
         newTabs[t.id] = { ...newTabs[t.id], ...t }
+        newIds.push(t.id)
       }
       state.tabs = newTabs
       if (action.groupId === 'inbox') {
