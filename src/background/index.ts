@@ -158,37 +158,34 @@ async function maybeJumpToExisting(newTabId: number, url: string) {
   const state = getState()
   if (!state.preferences.autoJumpToExisting) return
 
-  // 查 TabNest 里是否有同 URL 的已归组标签
-  let matched: Tab | null = null
+  // 1. 查 TabNest 里是否有同 URL 的已归组标签（待手动整理里的不算）
+  let matchedInGroup = false
   for (const g of state.groups) {
     for (const tid of g.tabIds) {
       const t = state.tabs[tid]
       if (t && t.url === url) {
-        matched = t
+        matchedInGroup = true
         break
       }
     }
-    if (matched) break
+    if (matchedInGroup) break
   }
-  if (!matched) return
+  if (!matchedInGroup) return
 
-  // 看看已归类的那个原 Chrome 标签是否还活着
-  let oldChromeTab: chrome.tabs.Tab | null = null
-  if (matched.chromeTabId != null && matched.chromeTabId !== newTabId) {
-    try {
-      oldChromeTab = await chrome.tabs.get(matched.chromeTabId)
-    } catch {
-      oldChromeTab = null
-    }
-  }
-  if (!oldChromeTab) {
-    // 原标签不在了 → 让新打开的这个生存，并且记录为新的 chromeTabId
-    matched.chromeTabId = newTabId
-    return
-  }
+  // 2. 在浏览器里查找同 URL 的标签（不依赖 chromeTabId）
+  let candidates: chrome.tabs.Tab[] = []
+  try {
+    candidates = await chrome.tabs.query({ url })
+  } catch {}
 
-  // 双保险：避免关掉原标签本身
-  if (oldChromeTab.id === newTabId) return
+  // 过滤掉刚刚刚打开的这个新标签本身
+  const others = candidates.filter((t) => t.id !== newTabId)
+  if (others.length === 0) return
+
+  // 优先选择【在 Tab Group 里】的那个原标签
+  const inGroup = others.find((t) => t.groupId != null && t.groupId !== -1)
+  const oldChromeTab = inGroup ?? others[0]
+  if (!oldChromeTab || oldChromeTab.id == null) return
 
   jumpInProgress.add(newTabId)
   try {
@@ -199,12 +196,13 @@ async function maybeJumpToExisting(newTabId: number, url: string) {
       } catch {}
     }
     // 2. 激活原标签 + 聚焦那个窗口
-    await chrome.tabs.update(oldChromeTab.id!, { active: true })
+    await chrome.tabs.update(oldChromeTab.id, { active: true })
     if (oldChromeTab.windowId != null) {
       await chrome.windows.update(oldChromeTab.windowId, { focused: true })
     }
     // 3. 关掉刚刚新开的重复标签
     await chrome.tabs.remove(newTabId)
+    console.log('[TabNest] 重复打开已跳转到原标签:', url)
   } catch (e) {
     console.warn('[TabNest] auto-jump failed', e)
   } finally {
