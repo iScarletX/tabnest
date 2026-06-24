@@ -109,7 +109,7 @@ chrome.tabs.onCreated.addListener((tab) => {
   })
 })
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   const meta = liveTabs.get(tabId)
   if (!meta) {
     liveTabs.set(tabId, {
@@ -119,19 +119,23 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       favicon: tab.favIconUrl || faviconOf(tab.url || ''),
       bornAt: Date.now(),
     })
-    return
   }
-  if (changeInfo.url) {
+  if (changeInfo.url && meta) {
     const oldDomain = domainOf(meta.url)
     const newDomain = domainOf(changeInfo.url)
     meta.url = changeInfo.url
-    // 只在跨域名跳转时重置计时（同站内切页不重置）
     if (oldDomain && newDomain && oldDomain !== newDomain) {
       meta.bornAt = Date.now()
     }
   }
-  if (changeInfo.title) meta.title = changeInfo.title
-  if (changeInfo.favIconUrl) meta.favicon = changeInfo.favIconUrl
+  if (changeInfo.title && meta) meta.title = changeInfo.title
+  if (changeInfo.favIconUrl && meta) meta.favicon = changeInfo.favIconUrl
+
+  // ✨ 自动跳转到已归类的原标签
+  // 只在 URL 让变且不是空页时检查
+  if (changeInfo.url && changeInfo.url !== 'about:blank' && !changeInfo.url.startsWith('chrome://')) {
+    await maybeJumpToExisting(tabId, changeInfo.url)
+  }
 })
 
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -139,6 +143,74 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   // 用户只能通过【右键菜单】或【PendingPanel 中主动处理】的方式入库
   liveTabs.delete(tabId)
 })
+
+// ============================================================
+//  自动跳转到已归类的原标签
+// ============================================================
+
+/** 防重入：避免自己触发的 onUpdated 又被自己处理 */
+const jumpInProgress = new Set<number>()
+
+async function maybeJumpToExisting(newTabId: number, url: string) {
+  if (jumpInProgress.has(newTabId)) return
+
+  await ensureLoaded()
+  const state = getState()
+  if (!state.preferences.autoJumpToExisting) return
+
+  // 查 TabNest 里是否有同 URL 的已归组标签
+  let matched: Tab | null = null
+  for (const g of state.groups) {
+    for (const tid of g.tabIds) {
+      const t = state.tabs[tid]
+      if (t && t.url === url) {
+        matched = t
+        break
+      }
+    }
+    if (matched) break
+  }
+  if (!matched) return
+
+  // 看看已归类的那个原 Chrome 标签是否还活着
+  let oldChromeTab: chrome.tabs.Tab | null = null
+  if (matched.chromeTabId != null && matched.chromeTabId !== newTabId) {
+    try {
+      oldChromeTab = await chrome.tabs.get(matched.chromeTabId)
+    } catch {
+      oldChromeTab = null
+    }
+  }
+  if (!oldChromeTab) {
+    // 原标签不在了 → 让新打开的这个生存，并且记录为新的 chromeTabId
+    matched.chromeTabId = newTabId
+    return
+  }
+
+  // 双保险：避免关掉原标签本身
+  if (oldChromeTab.id === newTabId) return
+
+  jumpInProgress.add(newTabId)
+  try {
+    // 1. 如果原标签在某个 Tab Group 里且被折叠 → 展开
+    if (oldChromeTab.groupId != null && oldChromeTab.groupId !== -1) {
+      try {
+        await chrome.tabGroups.update(oldChromeTab.groupId, { collapsed: false })
+      } catch {}
+    }
+    // 2. 激活原标签 + 聚焦那个窗口
+    await chrome.tabs.update(oldChromeTab.id!, { active: true })
+    if (oldChromeTab.windowId != null) {
+      await chrome.windows.update(oldChromeTab.windowId, { focused: true })
+    }
+    // 3. 关掉刚刚新开的重复标签
+    await chrome.tabs.remove(newTabId)
+  } catch (e) {
+    console.warn('[TabNest] auto-jump failed', e)
+  } finally {
+    jumpInProgress.delete(newTabId)
+  }
+}
 
 // ============================================================
 //  Badge 更新

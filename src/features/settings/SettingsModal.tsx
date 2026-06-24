@@ -46,6 +46,12 @@ export function SettingsModal({ open, onClose }: Props) {
                 checked={prefs.showOpenTabsInInbox}
                 onChange={(v) => dispatch({ type: 'setPref', patch: { showOpenTabsInInbox: v } })}
               />
+              <Toggle
+                label="重复打开时自动跳转"
+                hint="打开已归类的同一个 URL 时，自动展开那个 Tab Group 并跳到原标签、关掉重复的"
+                checked={prefs.autoJumpToExisting}
+                onChange={(v) => dispatch({ type: 'setPref', patch: { autoJumpToExisting: v } })}
+              />
             </div>
           </section>
 

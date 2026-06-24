@@ -122,7 +122,11 @@ export async function applyPlanToBrowser(
         chromeTab = await chrome.tabs.create({ url: meta.url, active: false })
         openedTabs++
       }
-      if (chromeTab.id != null) tabIds.push(chromeTab.id)
+      if (chromeTab.id != null) {
+        tabIds.push(chromeTab.id)
+        // 记录 chromeTabId，供后续「重复打开自动跳转」使用
+        meta.chromeTabId = chromeTab.id
+      }
     }
 
     if (tabIds.length === 0) continue

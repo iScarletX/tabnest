@@ -33,5 +33,6 @@ export const initialState: TabNestState = {
     aiModel: 'gpt-4o-mini',
     showFavicon: true,
     showOpenTabsInInbox: true,
+    autoJumpToExisting: true,
   },
 }

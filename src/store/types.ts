@@ -33,6 +33,8 @@ export interface Preferences {
   aiModel: string
   showFavicon: boolean
   showOpenTabsInInbox: boolean
+  /** 重复 URL 自动跳转到已归类的原标签（默认开）*/
+  autoJumpToExisting: boolean
 }
 
 export interface TabNestState {
