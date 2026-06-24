@@ -10,16 +10,22 @@ export function domainOf(url: string): string {
 }
 
 /** 规范化 URL：去掉 query string 和 hash，仅保留 origin + pathname
- *  并去掉末尾斜杠以正确去重
+ *  并去掉末尾斜杠以正确去重，补全 HTTPS 协议以防止因手动输入而遗漏导致的伪性不匹配
  */
 export function normalizeUrl(url: string): string {
+  let toParse = url.trim()
+  if (!toParse.startsWith('http://') && !toParse.startsWith('https://')) {
+    toParse = 'https://' + toParse
+  }
   try {
-    const u = new URL(url)
+    const u = new URL(toParse)
     let path = u.pathname
     if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1)
-    return `${u.origin}${path}`
+    let origin = u.origin.toLowerCase()
+    if (origin.startsWith('http://')) origin = origin.replace('http://', 'https://')
+    return `${origin}${path}`
   } catch {
-    return url
+    return url.toLowerCase()
   }
 }
 
@@ -61,21 +67,37 @@ export async function focusOrOpen(url: string, chromeTabId?: number): Promise<vo
     try {
       const t = await chrome.tabs.get(chromeTabId)
       if (t) {
+        if (t.groupId != null && t.groupId !== -1) {
+          try { await chrome.tabGroups.update(t.groupId, { collapsed: false }) } catch {}
+        }
         await chrome.tabs.update(t.id!, { active: true })
         if (t.windowId != null) await chrome.windows.update(t.windowId, { focused: true })
         return
       }
     } catch {
-      // tab 不存在了 → 新开
+      // tab 不存在了 → 往下继续进行全量 URL 搜索
     }
   }
-  // 看 URL 是否在其他标签里
-  const found = await chrome.tabs.query({ url })
-  if (found.length > 0 && found[0].id != null) {
-    await chrome.tabs.update(found[0].id, { active: true })
-    if (found[0].windowId != null) await chrome.windows.update(found[0].windowId, { focused: true })
+  
+  // 查找整个浏览器看看是否有此 URL (不依赖 Chrome query strict matching，而是手写 normalize 过滤)
+  const norm = normalizeUrl(url)
+  let allTabs: chrome.tabs.Tab[] = []
+  try {
+    allTabs = await chrome.tabs.query({})
+  } catch (e) {}
+
+  const match = allTabs.find((t) => t.url && normalizeUrl(t.url) === norm)
+  
+  // 找到了现成的网页，这即使在 Tab Group 也可以跳回！
+  if (match && match.id != null) {
+    if (match.groupId != null && match.groupId !== -1) {
+      try { await chrome.tabGroups.update(match.groupId, { collapsed: false }) } catch {}
+    }
+    await chrome.tabs.update(match.id, { active: true })
+    if (match.windowId != null) await chrome.windows.update(match.windowId, { focused: true })
     return
   }
+  
   // 新开
   await chrome.tabs.create({ url, active: true })
 }
