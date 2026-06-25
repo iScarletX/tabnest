@@ -33,7 +33,10 @@ export function Options() {
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
-    ensureLoaded()
+    ensureLoaded().then(() => {
+      // 打开整理台时自动清理历史脏数据（重复 URL）
+      dispatch({ type: 'dedupeAll' })
+    })
   }, [])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))

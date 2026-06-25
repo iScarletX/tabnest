@@ -12,11 +12,27 @@ import { normalizeUrl } from '../../lib/chrome-api'
 
 export function InboxPanel() {
   const state = useStore()
-  const inbox = useMemo(
-    () => state.inbox.map((id) => state.tabs[id]).filter(Boolean),
-    [state.inbox, state.tabs],
-  )
   const groups = state.groups
+
+  // 防御性过滤：任何 URL 已在分组里的标签，不在待手动整理里重复显示
+  const groupedUrls = useMemo(() => {
+    const set = new Set<string>()
+    for (const g of state.groups) {
+      for (const tid of g.tabIds) {
+        const t = state.tabs[tid]
+        if (t) set.add(normalizeUrl(t.url))
+      }
+    }
+    return set
+  }, [state.groups, state.tabs])
+
+  const inbox = useMemo(
+    () => state.inbox
+      .map((id) => state.tabs[id])
+      .filter((t): t is NonNullable<typeof t> => Boolean(t))
+      .filter((t) => !groupedUrls.has(normalizeUrl(t.url))),
+    [state.inbox, state.tabs, groupedUrls],
+  )
 
   const { isOver, setNodeRef } = useDroppable({ id: 'inbox' })
 
