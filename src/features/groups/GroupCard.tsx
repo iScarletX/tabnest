@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { MoreVertical, Trash2, Pencil, Plus, ChevronDown, ChevronRight, Palette } from 'lucide-react'
 
 const PALETTE = [
@@ -25,7 +25,20 @@ export function GroupCard({ group }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
+  // 默认折叠起来，点分组才展开所有子标签
+  const [collapsed, setCollapsed] = useState(true)
+
+  // 响应全局展开 / 全局折叠事件
+  useEffect(() => {
+    const expandHandler = () => setCollapsed(false)
+    const collapseHandler = () => setCollapsed(true)
+    window.addEventListener('tabnest:expand-all', expandHandler)
+    window.addEventListener('tabnest:collapse-all', collapseHandler)
+    return () => {
+      window.removeEventListener('tabnest:expand-all', expandHandler)
+      window.removeEventListener('tabnest:collapse-all', collapseHandler)
+    }
+  }, [])
   const [name, setName] = useState(group.name)
 
   const { isOver, setNodeRef } = useDroppable({ id: group.id })
@@ -70,10 +83,18 @@ export function GroupCard({ group }: Props) {
         </div>
       )}
 
-      <div className="flex items-center gap-2.5 px-4 py-3">
+      <div
+        className="flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-bg-hover/30 transition-colors"
+        onClick={(e) => {
+          // 点击整个标题区都能展开折叠，但如果点在重命名输入框、菜单按钮里不触发
+          const tag = (e.target as HTMLElement).tagName
+          if (tag === 'INPUT' || tag === 'BUTTON' || (e.target as HTMLElement).closest('button')) return
+          setCollapsed((v) => !v)
+        }}
+      >
         <button
           className="btn-icon p-1"
-          onClick={() => setCollapsed((v) => !v)}
+          onClick={(e) => { e.stopPropagation(); setCollapsed((v) => !v) }}
           title={collapsed ? '展开' : '折叠'}
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}

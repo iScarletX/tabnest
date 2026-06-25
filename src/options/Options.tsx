@@ -7,7 +7,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import { Plus } from 'lucide-react'
+import { Plus, ChevronsUpDown, ChevronsDownUp } from 'lucide-react'
 import { Header } from '../shared/Header'
 import { ToastContainer, showToast } from '../shared/Toast'
 import { GroupCard } from '../features/groups/GroupCard'
@@ -100,6 +100,20 @@ export function Options() {
               <div className="flex items-baseline gap-2">
                 <h2 className="text-base font-semibold tracking-tight">📂 我的分组</h2>
                 <span className="text-xs text-ink-muted">{groups.length} 个</span>
+                <button
+                  className="btn-ghost ml-2"
+                  onClick={() => window.dispatchEvent(new Event('tabnest:expand-all'))}
+                  title="全部展开"
+                >
+                  <ChevronsUpDown size={12} /> 全展开
+                </button>
+                <button
+                  className="btn-ghost"
+                  onClick={() => window.dispatchEvent(new Event('tabnest:collapse-all'))}
+                  title="全部折叠"
+                >
+                  <ChevronsDownUp size={12} /> 全折叠
+                </button>
               </div>
               <div className="flex items-center gap-1.5 flex-wrap justify-end">
                 <span className="text-[11px] text-ink-muted mr-1">快速新建：</span>
