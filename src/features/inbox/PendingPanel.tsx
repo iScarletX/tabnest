@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { X, Inbox, Sparkles, Trash2 } from 'lucide-react'
 import { useStore, dispatch, getState } from '../../store'
-import { chromeTabToTab, normalizeUrl } from '../../lib/chrome-api'
+import { chromeTabToTab, normalizeUrl, focusOrOpen } from '../../lib/chrome-api'
 import type { Tab } from '../../store/types'
 import { showToast } from '../../shared/Toast'
 
@@ -174,7 +174,15 @@ function LiveRow({
   const show = useStore().preferences.showFavicon
 
   return (
-    <div className="group flex items-center gap-2.5 pl-2 pr-2.5 py-2 rounded-lg bg-bg-soft/40 hover:bg-bg-hover transition-colors">
+    <div
+      className="group flex items-center gap-2.5 pl-2 pr-2.5 py-2 rounded-lg bg-bg-soft/40 hover:bg-bg-hover transition-colors cursor-pointer"
+      onClick={(e) => {
+        // 点击按钮时不触发整行点击
+        const tag = (e.target as HTMLElement).tagName
+        if (tag === 'BUTTON' || (e.target as HTMLElement).closest('button')) return
+        focusOrOpen(tab.url, tab.chromeTabId)
+      }}
+    >
       <span
         className="w-1.5 h-1.5 rounded-full bg-success shrink-0 animate-pulse"
         title="正在浏览器中打开"
